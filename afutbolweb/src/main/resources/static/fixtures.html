@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programación - Afutbol</title>
+    <link href="css/admin.css" rel="stylesheet">
+</head>
+<body>
+
+    <div class="container">
+        <a href="index.html" class="back-link">&larr; Volver al inicio</a>
+        <img src="assets/img/afutbol.png" alt="AFUTBOL" class="logo" width="300">
+        <h1>Programación</h1>
+
+        <!-- Filtro por fecha -->
+        <form>
+            <div class="form-group">
+                <label for="matchdayFilter">Ver partidos de:</label>
+                <select id="matchdayFilter">
+                    <option value="">Todas las fechas</option>
+                </select>
+            </div>
+        </form>
+
+        <!--Tabla de partidos-->
+        <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Día</th>
+                    <th>Hora</th>
+                    <th>Local</th>
+                    <th>Visitante</th>
+                    <th>Cancha</th>
+                </tr>
+            </thead>
+            <tbody id="gameTableBody">
+            </tbody>
+        </table>
+        </div>
+        <p id="emptyMessage" class="empty-message"></p>
+    </div>
+
+    <script>
+        let matches = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            getMatchdays();
+            getMatches();
+        });
+
+        // 1. Obtener las fechas y llenar el filtro
+        async function getMatchdays() {
+            const response = await fetch('/api/matchdays');
+            const matchdays = await response.json();
+            const select = document.getElementById('matchdayFilter');
+
+            matchdays.forEach(md => {
+                select.innerHTML += `<option value="${md.matchdayId}">Fecha ${md.number}</option>`;
+            });
+        }
+
+        // 2. Obtener todos los partidos y mostrarlos
+        async function getMatches() {
+            const response = await fetch('/api/games');
+            matches = await response.json();
+            showMatches(matches);
+        }
+
+        // 3. Llenar la tabla con una lista de partidos
+        function showMatches(list) {
+            const tbody = document.getElementById('gameTableBody');
+            tbody.innerHTML = '';
+
+            list.forEach(m => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>Fecha ${m.matchday.number}</td>
+                        <td>${m.gameDate}</td>
+                        <td>${m.gameTime}</td>
+                        <td>${m.homeTeam.name}</td>
+                        <td>${m.awayTeam.name}</td>
+                        <td>${m.field.name}</td>
+                    </tr>
+                `;
+            });
+
+            if (list.length === 0) {
+                document.getElementById('emptyMessage').textContent = 'No hay partidos programados en esta fecha.';
+            } else {
+                document.getElementById('emptyMessage').textContent = '';
+            }
+        }
+
+        // 4. Al cambiar el filtro, mostrar solo los partidos de esa fecha
+        document.getElementById('matchdayFilter').addEventListener('change', () => {
+            const matchdayId = document.getElementById('matchdayFilter').value;
+
+            if (matchdayId === '') {
+                showMatches(matches);
+                return;
+            }
+
+            const filtered = [];
+            for (let i = 0; i < matches.length; i++) {
+                if (matches[i].matchday.matchdayId === parseInt(matchdayId)) {
+                    filtered.push(matches[i]);
+                }
+            }
+            showMatches(filtered);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipos - Afutbol</title>
+    <link href="css/admin.css" rel="stylesheet">
+</head>
+<body>
+
+    <div class="container">
+        <a href="index.html" class="back-link">&larr; Volver al inicio</a>
+        <img src="assets/img/afutbol.png" alt="AFUTBOL" class="logo" width="300">
+        <h1>Equipos</h1>
+
+        <form id="teamForm">
+            <input type="hidden" id="teamId">
+
+            <div class="form-group">
+                <label for="name">Nombre del equipo:</label>
+                <input type="text" id="name" required placeholder="Ej. Atlético">
+            </div>
+            <div class="form-group">
+                <label for="city">Municipio:</label>
+                <select id="city" required>
+                    <option value="">Selecciona un municipio</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="homeField">Cancha local:</label>
+                <select id="homeField" required>
+                    <option value="">Selecciona una cancha</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="alternateField">Cancha alterna (opcional):</label>
+                <select id="alternateField">
+                    <option value="">Sin cancha alterna</option>
+                </select>
+            </div>
+
+            <button type="submit" id="btnSubmit">Guardar equipo</button>
+            <button type="button" id="btnCancel" class="btn-cancel" onclick="clearForm()">Cancelar edición</button>
+        </form>
+
+        <h2>Equipos registrados</h2>
+        <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>Municipio</th>
+                    <th>Cancha local</th>
+                    <th>Cancha alterna</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="teamTableBody">
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/teams';
+        const FIELDS_URL = '/api/fields';
+
+        const CITIES = [
+            'Barbosa', 'Bello', 'Caldas', 'Copacabana', 'Envigado',
+            'Girardota', 'Itagüí', 'La Estrella', 'Medellín', 'Sabaneta',
+            'Apartadó', 'Caucasia', 'La Ceja', 'Marinilla', 'Rionegro', 'Turbo'
+        ];
+
+        let teams = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCities();
+            loadFields();
+            getTeams();
+        });
+
+        // 1. Llenar el menú de municipios
+        function loadCities() {
+            const selectCity = document.getElementById('city');
+            CITIES.forEach(city => {
+                selectCity.innerHTML += `<option value="${city}">${city}</option>`;
+            });
+        }
+
+        // 2. Llenar los menús de canchas con los datos de la base
+        async function loadFields() {
+            try {
+                const response = await fetch(FIELDS_URL);
+                const fields = await response.json();
+                const selectHome = document.getElementById('homeField');
+                const selectAlternate = document.getElementById('alternateField');
+
+                fields.forEach(f => {
+                    const option = `<option value="${f.fieldId}">${f.name} (${f.city})</option>`;
+                    selectHome.innerHTML += option;
+                    selectAlternate.innerHTML += option;
+                });
+            } catch (error) {
+                console.error("Error al cargar canchas:", error);
+            }
+        }
+
+        // 3. Obtener y listar equipos
+        async function getTeams() {
+            try {
+                const response = await fetch(API_URL);
+                teams = await response.json();
+                const tbody = document.getElementById('teamTableBody');
+                tbody.innerHTML = '';
+
+                teams.forEach((t, i) => {
+                    let alternate = '-';
+                    if (t.alternateField) {
+                        alternate = t.alternateField.name;
+                    }
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${t.name}</td>
+                            <td>${t.city}</td>
+                            <td>${t.homeField.name}</td>
+                            <td>${alternate}</td>
+                            <td>
+                                <button class="btn-edit" onclick="prepareEdit(${t.teamId})">Editar</button>
+                                <button class="btn-delete" onclick="deleteTeam(${t.teamId})">Eliminar</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                console.error("Error al cargar equipos:", error);
+            }
+        }
+
+        // 4. Guardar o actualizar equipo
+        document.getElementById('teamForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById('teamId').value;
+            const homeFieldId = document.getElementById('homeField').value;
+            const alternateFieldId = document.getElementById('alternateField').value;
+
+            if (homeFieldId === alternateFieldId) {
+                alert('La cancha alterna debe ser diferente a la cancha local.');
+                return;
+            }
+
+            let alternate = null;
+            if (alternateFieldId) {
+                alternate = { fieldId: parseInt(alternateFieldId) };
+            }
+
+            const team = {
+                name: document.getElementById('name').value.trim(),
+                city: document.getElementById('city').value,
+                homeField: { fieldId: parseInt(homeFieldId) },
+                alternateField: alternate
+            };
+
+            // Si hay un ID, JPA lo actualiza en vez de crear uno nuevo
+            if (id) {
+                team.teamId = parseInt(id);
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(team)
+                });
+
+                if (!response.ok) {
+                    alert('No se pudo guardar el equipo. Revisa que el nombre no esté repetido.');
+                    return;
+                }
+
+                clearForm();
+                getTeams();
+            } catch (error) {
+                console.error("Error al guardar equipo:", error);
+            }
+        });
+
+        // 5. Cargar los datos de un equipo en el formulario para editarlo
+        function prepareEdit(id) {
+            const team = teams.find(t => t.teamId === id);
+
+            document.getElementById('teamId').value = team.teamId;
+            document.getElementById('name').value = team.name;
+            document.getElementById('city').value = team.city;
+            document.getElementById('homeField').value = team.homeField.fieldId;
+            if (team.alternateField) {
+                document.getElementById('alternateField').value = team.alternateField.fieldId;
+            } else {
+                document.getElementById('alternateField').value = '';
+            }
+
+            document.getElementById('btnSubmit').textContent = 'Actualizar equipo';
+            document.getElementById('btnSubmit').style.backgroundColor = '#ffc107';
+            document.getElementById('btnSubmit').style.color = '#333';
+            document.getElementById('btnCancel').style.display = 'block';
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 6. Limpiar formulario y volver al estado inicial
+        function clearForm() {
+            document.getElementById('teamForm').reset();
+            document.getElementById('teamId').value = '';
+            document.getElementById('btnSubmit').textContent = 'Guardar equipo';
+            document.getElementById('btnSubmit').style.backgroundColor = '';
+            document.getElementById('btnSubmit').style.color = '';
+            document.getElementById('btnCancel').style.display = 'none';
+        }
+
+        // 7. Eliminar equipo
+        async function deleteTeam(id) {
+            if (confirm('¿Estás seguro de que deseas eliminar este equipo?')) {
+                try {
+                    const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+
+                    if (!response.ok) {
+                        alert('No se puede eliminar: el equipo tiene partidos programados.');
+                        return;
+                    }
+
+                    getTeams();
+                } catch (error) {
+                    console.error("Error al eliminar equipo:", error);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programación de partidos - Afutbol</title>
+    <link href="css/admin.css" rel="stylesheet">
+</head>
+<body>
+
+    <div class="container">
+        <a href="index.html" class="back-link">&larr; Volver al inicio</a>
+        <img src="assets/img/afutbol.png" alt="AFUTBOL" class="logo" width="300">
+        <h1>Programación de partidos</h1>
+
+        <!-- Formulario para crear fechas -->
+        <h2>Crear fecha</h2>
+        <form id="matchdayForm">
+            <div class="form-group">
+                <label for="number">Número de la fecha:</label>
+                <input type="number" id="number" min="1" required placeholder="Ej. 3">
+            </div>
+            <button type="submit">Crear fecha</button>
+        </form>
+
+        <!-- Formulario para programar partidos -->
+        <h2>Programar partido</h2>
+        <form id="gameForm">
+            <div class="form-group">
+                <label for="matchday">Fecha:</label>
+                <select id="matchday" required>
+                    <option value="">Selecciona una fecha</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="field">Cancha:</label>
+                <select id="field" required>
+                    <option value="">Primero elige el equipo local</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="homeTeam">Equipo local:</label>
+                <select id="homeTeam" required>
+                    <option value="">Selecciona el equipo local</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="awayTeam">Equipo visitante:</label>
+                <select id="awayTeam" required>
+                    <option value="">Selecciona el equipo visitante</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="gameDate">Día:</label>
+                <input type="date" id="gameDate" required>
+            </div>
+            <div class="form-group">
+                <label for="gameTime">Hora:</label>
+                <input type="time" id="gameTime" required>
+            </div>
+            <button type="submit">Programar partido</button>
+        </form>
+
+        <!-- Tabla de partidos -->
+        <h2>Partidos programados</h2>
+        <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Día</th>
+                    <th>Hora</th>
+                    <th>Local</th>
+                    <th>Visitante</th>
+                    <th>Cancha</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="gameTableBody">
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <script>
+        const TOURNAMENT_ID = 1;
+        let teams = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            getMatchdays();
+            getTeams();
+            getMatches();
+        });
+
+        // 1. Obtener las fechas y llenar el menú de fechas
+        async function getMatchdays() {
+            const response = await fetch('/api/matchdays');
+            const matchdays = await response.json();
+            const select = document.getElementById('matchday');
+
+            select.innerHTML = '<option value="">Selecciona una fecha</option>';
+            matchdays.forEach(md => {
+                select.innerHTML += `<option value="${md.matchdayId}">Fecha ${md.number}</option>`;
+            });
+        }
+
+        // 2. Crear una fecha
+        document.getElementById('matchdayForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const matchday = {
+                tournament: { tournamentId: TOURNAMENT_ID },
+                number: parseInt(document.getElementById('number').value)
+            };
+
+            const response = await fetch('/api/matchdays', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(matchday)
+            });
+
+            if (!response.ok) {
+                alert('Esa fecha ya existe.');
+                return;
+            }
+
+            alert('Fecha creada correctamente.');
+            document.getElementById('matchdayForm').reset();
+            getMatchdays();
+        });
+
+        // 3. Obtener los equipos y llenar los menús de local y visitante
+        async function getTeams() {
+            const response = await fetch('/api/teams');
+            teams = await response.json();
+
+            teams.forEach(t => {
+                const option = `<option value="${t.teamId}">${t.name}</option>`;
+                document.getElementById('homeTeam').innerHTML += option;
+                document.getElementById('awayTeam').innerHTML += option;
+            });
+        }
+
+        // 4. Al elegir el equipo local, mostrar solo sus canchas
+        document.getElementById('homeTeam').addEventListener('change', () => {
+            const homeTeamId = parseInt(document.getElementById('homeTeam').value);
+            const selectField = document.getElementById('field');
+            selectField.innerHTML = '<option value="">Primero elige el equipo local</option>';
+
+            for (let i = 0; i < teams.length; i++) {
+                if (teams[i].teamId === homeTeamId) {
+                    const homeTeam = teams[i];
+                    selectField.innerHTML = `<option value="${homeTeam.homeField.fieldId}">${homeTeam.homeField.name} (local)</option>`;
+
+                    if (homeTeam.alternateField !== null) {
+                        selectField.innerHTML += `<option value="${homeTeam.alternateField.fieldId}">${homeTeam.alternateField.name} (alterna)</option>`;
+                    }
+                }
+            }
+        });
+
+        // 5. Programar un partido
+        document.getElementById('gameForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const match = {
+                matchday: { matchdayId: parseInt(document.getElementById('matchday').value) },
+                homeTeam: { teamId: parseInt(document.getElementById('homeTeam').value) },
+                awayTeam: { teamId: parseInt(document.getElementById('awayTeam').value) },
+                field: { fieldId: parseInt(document.getElementById('field').value) },
+                gameDate: document.getElementById('gameDate').value,
+                gameTime: document.getElementById('gameTime').value
+            };
+
+            const response = await fetch('/api/games', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(match)
+            });
+
+            const message = await response.text();
+            alert(message);
+
+            if (response.ok) {
+                document.getElementById('gameForm').reset();
+                document.getElementById('field').innerHTML = '<option value="">Primero elige el equipo local</option>';
+                getMatches();
+            }
+        });
+
+        // 6. Obtener los partidos y llenar la tabla
+        async function getMatches() {
+            const response = await fetch('/api/games');
+            const matches = await response.json();
+            const tbody = document.getElementById('gameTableBody');
+            tbody.innerHTML = '';
+
+            matches.forEach(m => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>Fecha ${m.matchday.number}</td>
+                        <td>${m.gameDate}</td>
+                        <td>${m.gameTime}</td>
+                        <td>${m.homeTeam.name}</td>
+                        <td>${m.awayTeam.name}</td>
+                        <td>${m.field.name}</td>
+                        <td>
+                            <button class="btn-delete" onclick="deleteMatch(${m.gameId})">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // 7. Eliminar un partido
+        async function deleteMatch(id) {
+            if (confirm('¿Estás seguro de que deseas eliminar este partido?')) {
+                await fetch(`/api/games/${id}`, { method: 'DELETE' });
+                getMatches();
+            }
+        }
+    </script>
+</body>
+</html>
