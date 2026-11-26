@@ -28,11 +28,13 @@ public class TeamController {
         return repository.findAll();
     }
 
+    // Sin teamId crea el equipo; con teamId lo actualiza
     @PostMapping
     public Team saveTeam(@RequestBody Team team) {
         return repository.save(team);
     }
-
+    
+    // Si el equipo tiene partidos, MySQL no deja borrarlo (llave foránea)
     @DeleteMapping("/{id}")
     public void deleteTeam(@PathVariable Integer id) {
         repository.deleteById(id);

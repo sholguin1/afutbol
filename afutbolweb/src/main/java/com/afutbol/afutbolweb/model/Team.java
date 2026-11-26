@@ -27,6 +27,7 @@ public class Team {
 
     @ManyToOne
     @JoinColumn(name = "alternate_field_id")
+    // Cancha alterna: es opcional, puede quedar en null
     private Field alternateField;
     // Constructor vacío
     public Team() {

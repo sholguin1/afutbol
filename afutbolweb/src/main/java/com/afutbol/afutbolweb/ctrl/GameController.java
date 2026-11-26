@@ -35,6 +35,7 @@ public class GameController {
 
     @PostMapping
     public ResponseEntity<String> saveGame(@RequestBody Game game) {
+        // De la página solo llegan los ids; aquí se traen los equipos completos
         Team homeTeam = teamRepository.findById(game.getHomeTeam().getTeamId()).get();
         Team awayTeam = teamRepository.findById(game.getAwayTeam().getTeamId()).get();
         Integer fieldId = game.getField().getFieldId();
@@ -100,6 +101,7 @@ public class GameController {
         gameRepository.deleteById(id);
     }
 
+    // Revisa si el equipo juega en ese partido, de local o de visitante. Lo usan las reglas 3 y 4
     private boolean playsInGame(Team team, Game game) {
         if (game.getHomeTeam().getTeamId().equals(team.getTeamId())) {
             return true;

@@ -35,6 +35,8 @@ public class Tournament {
         this.endDate = endDate;
     }
 
+    //Getters y Setters
+
     public Integer getTournamentId() {
         return tournamentId;
     }

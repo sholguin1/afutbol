@@ -55,6 +55,8 @@ public class Game {
         this.gameTime = gameTime;
     }
 
+    //Getters y Setters
+
     public Integer getGameId() {
         return gameId;
     }

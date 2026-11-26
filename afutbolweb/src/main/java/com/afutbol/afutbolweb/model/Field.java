@@ -27,6 +27,8 @@ public class Field {
         this.city = city;
     }
 
+    //Getters y Setters
+
     public Integer getFieldId() {
         return fieldId;
     }

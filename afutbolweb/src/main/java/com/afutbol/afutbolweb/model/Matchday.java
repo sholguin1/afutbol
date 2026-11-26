@@ -32,6 +32,8 @@ public class Matchday {
         this.number = number;
     }
 
+    //Getters y Setters
+
     public Integer getMatchdayId() {
         return matchdayId;
     }
