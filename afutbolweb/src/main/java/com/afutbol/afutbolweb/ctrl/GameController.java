@@ -28,11 +28,14 @@ public class GameController {
         this.teamRepository = teamRepository;
     }
 
+    //Cuando llegue un GET a api/games, ejecutar lo de abajo. Devolverá una lista de todos los partidos ordenados
     @GetMapping
     public List<Game> getGames() {
         return gameRepository.findAllByOrderByGameDateAscGameTimeAsc();
     }
 
+    // Programa un partido: revisa las 4 reglas y, si todo está bien, lo guarda
+    //Cuando llegue un POST a api/games, ejecuta esto
     @PostMapping
     public ResponseEntity<String> saveGame(@RequestBody Game game) {
         // De la página solo llegan los ids; aquí se traen los equipos completos
@@ -92,10 +95,13 @@ public class GameController {
             }
         }
 
+        //Si no se hace ningun return, se programa ese partido
         gameRepository.save(game);
         return ResponseEntity.ok("Partido programado correctamente.");
     }
 
+    //Cuando llegue un DELETE a api/games/ALGO ejecuta en ese ALGO (id)
+    //PathVariable saca el número de la dirección
     @DeleteMapping("/{id}")
     public void deleteGame(@PathVariable Integer id) {
         gameRepository.deleteById(id);
